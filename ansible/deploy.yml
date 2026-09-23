@@ -1,0 +1,83 @@
+---
+# CampusConnect deployment playbook. Plausible stub.
+#
+# It does what the 2014 runbook did: stop Tomcat, copy a WAR, start Tomcat,
+# then curl the home page and hope. No blue/green, no health gate, no rollback
+# beyond keeping one backup copy.
+#
+# TODO CC-1380: the three inventories differ only in host names and the
+# customer code. Once the fork is consolidated this becomes one playbook with
+# a runtime variable instead of three branches.
+
+- name: Deploy CampusConnect
+  hosts: campusconnect
+  become: true
+  serial: 1
+
+  vars:
+    customer_code: NORTHLAKE
+    tomcat_home: /opt/tomcat
+    tomcat_service: tomcat
+    war_path: campusconnect-web/target/campusconnect.war
+    deploy_user: tomcat
+
+  tasks:
+
+    - name: Verify the WAR exists on the controller
+      delegate_to: localhost
+      become: false
+      stat:
+        path: "{{ war_path }}"
+      register: war_stat
+      failed_when: not war_stat.stat.exists
+
+    - name: Stop Tomcat
+      service:
+        name: "{{ tomcat_service }}"
+        state: stopped
+
+    - name: Back up the currently deployed WAR
+      copy:
+        src: "{{ tomcat_home }}/webapps/ROOT.war"
+        dest: "{{ tomcat_home }}/webapps/ROOT.war.previous"
+        remote_src: true
+      ignore_errors: true
+
+    - name: Remove the exploded webapp directory
+      file:
+        path: "{{ tomcat_home }}/webapps/ROOT"
+        state: absent
+
+    - name: Copy the new WAR
+      copy:
+        src: "{{ war_path }}"
+        dest: "{{ tomcat_home }}/webapps/ROOT.war"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: "0644"
+
+    - name: Write the per-customer log4j configuration
+      template:
+        src: templates/log4j.properties.j2
+        dest: "{{ tomcat_home }}/lib/log4j.properties"
+        owner: "{{ deploy_user }}"
+        mode: "0644"
+      ignore_errors: true
+
+    - name: Start Tomcat
+      service:
+        name: "{{ tomcat_service }}"
+        state: started
+
+    - name: Wait for the application to answer
+      uri:
+        url: "http://127.0.0.1:8080/"
+        status_code: 200
+      register: smoke
+      retries: 30
+      delay: 5
+      until: smoke.status == 200
+
+    - name: Report
+      debug:
+        msg: "Deployed {{ customer_code }} to {{ inventory_hostname }}"

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="
+         http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context-4.3.xsd
+         http://www.springframework.org/schema/mvc
+         http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd">
+
+  <!--
+    PARTIAL ANNOTATION USE, on purpose.
+
+    component-scan picks up the @Controller classes, and then two of them are
+    ALSO declared explicitly below with setter injection. Spring resolves the
+    duplicate by bean name and the explicit definition wins, which is why
+    changing an @Autowired field in StudentController sometimes has no effect.
+    TODO CC-1360: pick one style.
+  -->
+  <context:component-scan base-package="com.campusconnect.web.controller"/>
+  <mvc:annotation-driven/>
+
+  <bean id="studentController" class="com.campusconnect.web.controller.StudentController">
+    <property name="studentService" ref="studentService"/>
+    <property name="earlyAlertService" ref="earlyAlertService"/>
+  </bean>
+
+  <bean id="appointmentController" class="com.campusconnect.web.controller.AppointmentController">
+    <property name="appointmentService" ref="appointmentService"/>
+  </bean>
+
+  <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+    <property name="prefix" value="/WEB-INF/jsp/"/>
+    <property name="suffix" value=".jsp"/>
+  </bean>
+
+  <mvc:resources mapping="/static/**" location="/static/"/>
+
+</beans>

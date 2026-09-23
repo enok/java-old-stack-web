@@ -1,0 +1,6 @@
+[campusconnect]
+cc-app-01.northlake.example.edu
+
+[campusconnect:vars]
+customer_code=NORTHLAKE
+tomcat_home=/opt/tomcat

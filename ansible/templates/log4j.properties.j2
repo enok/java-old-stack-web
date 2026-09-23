@@ -1,0 +1,10 @@
+# Rendered per customer at deploy time. The same file also ships inside the WAR,
+# and the two disagree at Riverton. TODO CC-1310.
+log4j.rootLogger={{ 'DEBUG' if customer_code == 'RIVERTON' else 'INFO' }}, FILE
+
+log4j.appender.FILE=org.apache.log4j.RollingFileAppender
+log4j.appender.FILE.File={{ tomcat_home }}/logs/campusconnect.log
+log4j.appender.FILE.MaxFileSize=10MB
+log4j.appender.FILE.MaxBackupIndex=5
+log4j.appender.FILE.layout=org.apache.log4j.PatternLayout
+log4j.appender.FILE.layout.ConversionPattern=%d{ISO8601} %-5p [%t] %c - %m%n

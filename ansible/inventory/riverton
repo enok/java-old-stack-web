@@ -1,0 +1,7 @@
+[campusconnect]
+cc-app-01.riverton.example.edu
+cc-app-02.riverton.example.edu
+
+[campusconnect:vars]
+customer_code=RIVERTON
+tomcat_home=/opt/tomcat

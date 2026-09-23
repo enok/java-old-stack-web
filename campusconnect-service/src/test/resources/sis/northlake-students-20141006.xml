@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nightly extract from the Northlake SIS. Synthetic data. -->
+<sis-student-file customer="NORTHLAKE" term="FA2014" generated="20141006">
+  <students>
+    <student>
+      <sis-id>NL-S-4401</sis-id>
+      <first-name>Hannah</first-name>
+      <last-name>Iverson</last-name>
+      <email>hiverson@northlake.example.edu</email>
+      <phone>555-0110</phone>
+      <birth-date>19960314</birth-date>
+      <gpa>3.42</gpa>
+      <credits>62</credits>
+      <status>E</status>
+      <program>BA-HIST</program>
+      <advisor-staff-id>NL-1001</advisor-staff-id>
+    </student>
+    <student>
+      <sis-id>NL-S-4402</sis-id>
+      <first-name>Omar</first-name>
+      <last-name>Haddad</last-name>
+      <email>ohaddad@northlake.example.edu</email>
+      <phone>555-0111</phone>
+      <birth-date>19971102</birth-date>
+      <gpa>1.88</gpa>
+      <credits>28</credits>
+      <status>E</status>
+      <program>BS-ME</program>
+      <advisor-staff-id>NL-1002</advisor-staff-id>
+    </student>
+    <student>
+      <!-- No advisor: Northlake accepts this, Riverton would reject it. -->
+      <sis-id>NL-S-4403</sis-id>
+      <first-name>Grace</first-name>
+      <last-name>Lindqvist</last-name>
+      <email>glindqvist@northlake.example.edu</email>
+      <birth-date>19960729</birth-date>
+      <gpa>2.05</gpa>
+      <credits>44</credits>
+      <status>P</status>
+      <program>BA-PSY</program>
+    </student>
+  </students>
+</sis-student-file>

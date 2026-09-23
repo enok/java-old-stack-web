@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+                             http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+         version="3.0">
+
+  <display-name>CampusConnect</display-name>
+
+  <!--
+    Servlet 3.0 descriptor, but nothing here uses annotations or a
+    WebApplicationInitializer. Everything is declared in XML by hand, which is
+    the point: this is what the "before" state of the Spring Boot migration
+    actually looks like.
+  -->
+
+  <context-param>
+    <param-name>contextConfigLocation</param-name>
+    <param-value>classpath:applicationContext.xml</param-value>
+  </context-param>
+
+  <context-param>
+    <param-name>log4jConfigLocation</param-name>
+    <param-value>classpath:log4j.properties</param-value>
+  </context-param>
+
+  <listener>
+    <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+  </listener>
+
+  <filter>
+    <filter-name>customerContextFilter</filter-name>
+    <filter-class>com.campusconnect.web.filter.CustomerContextFilter</filter-class>
+    <init-param>
+      <!-- TODO CC-1350: this is the ONLY thing that differs between the three
+           production web.xml files. It is why three WARs are built from three
+           branches instead of one WAR with a runtime setting. -->
+      <param-name>defaultCustomerCode</param-name>
+      <param-value>NORTHLAKE</param-value>
+    </init-param>
+  </filter>
+  <filter-mapping>
+    <filter-name>customerContextFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+  <filter>
+    <filter-name>openSessionInView</filter-name>
+    <filter-class>org.springframework.orm.hibernate4.support.OpenSessionInViewFilter</filter-class>
+  </filter>
+  <filter-mapping>
+    <filter-name>openSessionInView</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+  <servlet>
+    <servlet-name>dispatcher</servlet-name>
+    <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+    <init-param>
+      <param-name>contextConfigLocation</param-name>
+      <param-value>/WEB-INF/dispatcher-servlet.xml</param-value>
+    </init-param>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>dispatcher</servlet-name>
+    <url-pattern>/</url-pattern>
+  </servlet-mapping>
+
+  <welcome-file-list>
+    <welcome-file>index.jsp</welcome-file>
+  </welcome-file-list>
+
+  <session-config>
+    <session-timeout>30</session-timeout>
+  </session-config>
+
+  <error-page>
+    <error-code>500</error-code>
+    <location>/WEB-INF/jsp/error.jsp</location>
+  </error-page>
+
+</web-app>

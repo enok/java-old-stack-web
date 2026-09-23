@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+         http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+         http://www.springframework.org/schema/tx
+         http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+
+  <!--
+    Root application context. Hand-written XML, one file, 2014 style.
+    Note that the DAO layer is wired here by setter injection while the same
+    DAOs ALSO carry @Autowired on their SessionFactory field. Both work; the
+    inconsistency is the smell.
+  -->
+
+  <context:annotation-config/>
+
+  <!--
+    Credentials inline. ConnectionHelper reads a second copy from
+    jdbc.properties. Changing the password means editing two files on three
+    servers. See docs/LEGACY-SMELLS.md #6.
+  -->
+  <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+    <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+    <property name="url" value="jdbc:mysql://mysql:3306/campusconnect?useUnicode=true&amp;characterEncoding=UTF-8"/>
+    <property name="username" value="campusconnect"/>
+    <property name="password" value="campusconnect"/>
+  </bean>
+
+  <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+    <property name="dataSource" ref="dataSource"/>
+    <property name="packagesToScan" value="com.campusconnect.domain"/>
+    <property name="hibernateProperties">
+      <props>
+        <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5InnoDBDialect</prop>
+        <prop key="hibernate.show_sql">false</prop>
+        <prop key="hibernate.format_sql">false</prop>
+        <prop key="hibernate.hbm2ddl.auto">none</prop>
+        <!-- XXX CC-1190: left on because two JSPs render lazily-loaded
+             collections outside the session. The right fix is to stop doing that. -->
+        <prop key="hibernate.enable_lazy_load_no_trans">true</prop>
+      </props>
+    </property>
+  </bean>
+
+  <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+
+  <tx:annotation-driven transaction-manager="transactionManager"/>
+
+  <!-- DAOs -->
+  <bean id="studentDao" class="com.campusconnect.persistence.HibernateStudentDao">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+  <bean id="advisorDao" class="com.campusconnect.persistence.HibernateAdvisorDao">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+  <bean id="appointmentDao" class="com.campusconnect.persistence.HibernateAppointmentDao">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+  <bean id="earlyAlertCaseDao" class="com.campusconnect.persistence.HibernateEarlyAlertCaseDao">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+  <bean id="courseDao" class="com.campusconnect.persistence.HibernateCourseDao">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+
+  <!-- Raw JDBC DAO. It takes no DataSource because it opens its own connection. -->
+  <bean id="enrollmentDao" class="com.campusconnect.persistence.jdbc.JdbcEnrollmentDao"/>
+
+  <!-- Services -->
+  <bean id="notificationService" class="com.campusconnect.service.NotificationService">
+    <property name="fromAddress" value="noreply@campusconnect.example.edu"/>
+  </bean>
+
+  <bean id="studentService" class="com.campusconnect.service.StudentService">
+    <property name="studentDao" ref="studentDao"/>
+    <property name="advisorDao" ref="advisorDao"/>
+    <property name="earlyAlertCaseDao" ref="earlyAlertCaseDao"/>
+    <property name="enrollmentDao" ref="enrollmentDao"/>
+  </bean>
+
+  <bean id="appointmentService" class="com.campusconnect.service.AppointmentService">
+    <property name="appointmentDao" ref="appointmentDao"/>
+    <property name="studentDao" ref="studentDao"/>
+    <property name="advisorDao" ref="advisorDao"/>
+  </bean>
+
+  <bean id="earlyAlertService" class="com.campusconnect.service.EarlyAlertService">
+    <property name="earlyAlertCaseDao" ref="earlyAlertCaseDao"/>
+    <property name="studentDao" ref="studentDao"/>
+  </bean>
+
+  <!-- SIS batch -->
+  <bean id="northlakeImporter" class="com.campusconnect.service.sis.NorthlakeStudentImporter">
+    <property name="studentDao" ref="studentDao"/>
+    <property name="advisorDao" ref="advisorDao"/>
+  </bean>
+  <bean id="rivertonImporter" class="com.campusconnect.service.sis.RivertonStudentImporter">
+    <property name="studentDao" ref="studentDao"/>
+    <property name="advisorDao" ref="advisorDao"/>
+  </bean>
+  <bean id="sisImportJob" class="com.campusconnect.service.sis.SisImportJob">
+    <property name="northlakeImporter" ref="northlakeImporter"/>
+    <property name="rivertonImporter" ref="rivertonImporter"/>
+    <property name="studentService" ref="studentService"/>
+  </bean>
+
+  <!--
+    LEGACY SMELL #5: the container is used to populate a static registry, so
+    half the application resolves collaborators through global state.
+    TODO CC-0977: remove once StudentService and EarlyAlertService take the
+    NotificationService by injection like every other bean here.
+  -->
+  <bean id="serviceLocatorBootstrap"
+        class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+    <property name="staticMethod" value="com.campusconnect.common.ServiceLocator.register"/>
+    <property name="arguments">
+      <list>
+        <value>notificationService</value>
+        <ref bean="notificationService"/>
+      </list>
+    </property>
+  </bean>
+
+</beans>

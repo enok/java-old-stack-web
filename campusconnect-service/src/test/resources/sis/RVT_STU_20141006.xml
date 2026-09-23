@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nightly extract from the Riverton SIS. Synthetic data.
+     Note the extra <athletics-code> and <campus> elements that only this
+     customer sends, and that only RivertonStudentImporter reads. -->
+<sis-student-file customer="RIVERTON" term="FA2014" generated="20141006">
+  <students>
+    <student>
+      <sis-id>RVT-S-88120</sis-id>
+      <first-name>Devon</first-name>
+      <last-name>Marsh</last-name>
+      <email>dmarsh@riverton.example.edu</email>
+      <phone>555-0220</phone>
+      <birth-date>19980109</birth-date>
+      <gpa>2.11</gpa>
+      <credits>51</credits>
+      <status>E</status>
+      <program>BS-KIN</program>
+      <advisor-staff-id>RVT-2201</advisor-staff-id>
+      <athletics-code>FB-01</athletics-code>
+      <campus>MAIN</campus>
+    </student>
+    <student>
+      <sis-id>RVT-S-88121</sis-id>
+      <first-name>Sofia</first-name>
+      <last-name>Kalinina</last-name>
+      <email>skalinina@riverton.example.edu</email>
+      <phone>555-0221</phone>
+      <birth-date>19950523</birth-date>
+      <gpa>3.90</gpa>
+      <credits>95</credits>
+      <status>E</status>
+      <program>BS-CS</program>
+      <advisor-staff-id>RVT-2201</advisor-staff-id>
+      <campus>ONLINE</campus>
+    </student>
+    <student>
+      <!-- Rejected by RivertonStudentImporter: no advisor-staff-id. -->
+      <sis-id>RVT-S-88122</sis-id>
+      <first-name>Ethan</first-name>
+      <last-name>Boateng</last-name>
+      <email>eboateng@riverton.example.edu</email>
+      <birth-date>19990930</birth-date>
+      <gpa>1.72</gpa>
+      <credits>19</credits>
+      <status>L</status>
+      <program>BA-COM</program>
+      <athletics-code>BB-07</athletics-code>
+      <campus>NORTH</campus>
+    </student>
+  </students>
+</sis-student-file>

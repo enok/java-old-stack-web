@@ -1,0 +1,6 @@
+[campusconnect]
+cc-app.summit.example.edu
+
+[campusconnect:vars]
+customer_code=SUMMIT
+tomcat_home=/srv/tomcat

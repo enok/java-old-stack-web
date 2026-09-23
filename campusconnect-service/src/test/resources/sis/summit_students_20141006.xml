@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nightly extract from the Summit SIS. Synthetic data.
+     Summit has no importer of its own: SisImportJob routes this file to
+     NorthlakeStudentImporter, which ignores <home-campus> entirely.
+     See docs/LEGACY-SMELLS.md #2 and CC-1301. -->
+<sis-student-file customer="SUMMIT" term="FA2014" generated="20141006">
+  <students>
+    <student>
+      <sis-id>SUM-S-701</sis-id>
+      <first-name>Rosa</first-name>
+      <last-name>Mendez</last-name>
+      <email>rmendez@summit.example.edu</email>
+      <phone>555-0330</phone>
+      <birth-date>19990217</birth-date>
+      <gpa>3.15</gpa>
+      <credits>33</credits>
+      <status>E</status>
+      <program>AA-GEN</program>
+      <advisor-staff-id>SUM-31</advisor-staff-id>
+      <home-campus>MAIN</home-campus>
+    </student>
+    <student>
+      <sis-id>SUM-S-702</sis-id>
+      <first-name>Kyle</first-name>
+      <last-name>Tarrant</last-name>
+      <email>ktarrant@summit.example.edu</email>
+      <birth-date>20000805</birth-date>
+      <gpa>1.60</gpa>
+      <credits>12</credits>
+      <status>P</status>
+      <program>AS-NUR</program>
+      <advisor-staff-id>SUM-31</advisor-staff-id>
+      <home-campus>WEST</home-campus>
+    </student>
+    <student>
+      <sis-id>SUM-S-703</sis-id>
+      <first-name>Ingrid</first-name>
+      <last-name>Halvorsen</last-name>
+      <email>ihalvorsen@summit.example.edu</email>
+      <birth-date>19981211</birth-date>
+      <gpa>2.44</gpa>
+      <credits>27</credits>
+      <status>E</status>
+      <program>AA-BUS</program>
+      <advisor-staff-id>SUM-32</advisor-staff-id>
+      <home-campus>ONLINE</home-campus>
+    </student>
+  </students>
+</sis-student-file>

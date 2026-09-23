@@ -1,0 +1,32 @@
+# Build output
+target/
+*.war
+*.jar
+*.class
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+nbproject/
+.vscode/
+
+# Maven
+.m2/
+dependency-reduced-pom.xml
+
+# Logs and local scratch
+*.log
+logs/
+catalina.out
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local SIS drop directory used when running the batch by hand
+sis-drop/

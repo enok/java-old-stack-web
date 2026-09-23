@@ -1,0 +1,20 @@
+/* 2014 stylesheet. No build step, no preprocessor, edited in place on the server. */
+body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; margin: 0; color: #222; }
+.header { color: #fff; padding: 10px 16px; }
+.header h1 { font-size: 18px; margin: 0; display: inline-block; }
+.header .cust { float: right; font-size: 11px; opacity: 0.8; }
+h2 { font-size: 16px; margin: 16px; }
+h3 { font-size: 14px; margin: 16px; }
+form, p, table, ul { margin: 16px; }
+table.grid { border-collapse: collapse; width: calc(100% - 32px); }
+table.grid th, table.grid td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
+table.grid th { background: #eee; }
+table.detail th { text-align: left; padding: 4px 10px 4px 0; width: 140px; }
+.notice { background: #f6f6e8; border: 1px solid #ddd8b0; padding: 8px; }
+.errors { color: #8a1f11; }
+.risk-high { color: #8a1f11; font-weight: bold; }
+.risk-medium { color: #9a6500; }
+.risk-low { color: #2c6a2c; }
+.footer { color: #777; font-size: 11px; }
+ul.nav { list-style: none; padding: 0; }
+ul.nav li { display: inline-block; margin-right: 14px; }

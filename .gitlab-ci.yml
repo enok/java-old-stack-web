@@ -1,0 +1,83 @@
+# CampusConnect pipeline.
+#
+# Plausible stub. It reflects how a forked, per-customer product actually gets
+# built: one pipeline, three WARs, three deploy jobs, all manual.
+#
+# TODO CC-1370: there is no quality gate here because there is almost nothing
+# to gate on - three tests. Adding coverage thresholds is pointless until the
+# characterization suite exists (backlog B-01).
+
+image: maven:3.6-jdk-8
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  MAVEN_CLI_OPTS: "-B -ntp"
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .m2/repository
+
+stages:
+  - build
+  - test
+  - package
+  - deploy
+
+build:
+  stage: build
+  script:
+    - mvn $MAVEN_CLI_OPTS -DskipTests compile
+  artifacts:
+    paths:
+      - "*/target/classes"
+    expire_in: 1 hour
+
+test:
+  stage: test
+  script:
+    - mvn $MAVEN_CLI_OPTS test
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - "*/target/surefire-reports/TEST-*.xml"
+
+package:
+  stage: package
+  script:
+    - mvn $MAVEN_CLI_OPTS -DskipTests package
+  artifacts:
+    paths:
+      - campusconnect-web/target/campusconnect.war
+    expire_in: 1 week
+
+.deploy_template: &deploy_template
+  stage: deploy
+  image: williamyeh/ansible:alpine3
+  when: manual
+  script:
+    - ansible-playbook -i ansible/inventory/$CUSTOMER ansible/deploy.yml
+        -e "customer_code=$CUSTOMER war_path=campusconnect-web/target/campusconnect.war"
+
+deploy:northlake:
+  <<: *deploy_template
+  variables:
+    CUSTOMER: northlake
+  only:
+    - master
+
+deploy:riverton:
+  <<: *deploy_template
+  variables:
+    CUSTOMER: riverton
+  only:
+    # Riverton deploys from its own branch. This is the fork made concrete.
+    - customer/riverton
+
+deploy:summit:
+  <<: *deploy_template
+  variables:
+    CUSTOMER: summit
+  only:
+    - customer/summit
