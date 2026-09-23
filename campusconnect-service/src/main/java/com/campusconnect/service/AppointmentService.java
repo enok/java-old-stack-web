@@ -115,13 +115,9 @@ public class AppointmentService {
             return errors;
         }
 
-        if (!DateUtils.isBusinessDay(startsAt)) {
-            // Summit runs Saturday counseling hours. The others do not.
-            if (!"SUMMIT".equals(CustomerContext.get())) {
-                errors.add("Appointments can only be scheduled on business days.");
-                return errors;
-            }
-        }
+        // SUMMIT BRANCH ONLY: the business-day check was deleted outright in 2017
+        // when weekend counseling hours started. On master the same rule survives
+        // as an if-chain, so this file cannot be merged without a decision.
 
         int already = appointmentDao.countForAdvisorOnDay(advisorId, startsAt);
         int cap = CustomerProperties.getInt("appointment.maxPerDay", 12);

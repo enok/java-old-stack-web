@@ -13,7 +13,7 @@ RUN rm -rf /usr/local/tomcat/webapps/ROOT
 
 # TODO CC-1350: the customer code is baked into web.xml at build time, so this
 # image is per-customer. One image per institution, three pipelines, three tags.
-ARG CUSTOMER_CODE=NORTHLAKE
+ARG CUSTOMER_CODE=SUMMIT
 ENV CUSTOMER_CODE=${CUSTOMER_CODE}
 
 COPY campusconnect-web/target/campusconnect.war /usr/local/tomcat/webapps/ROOT.war

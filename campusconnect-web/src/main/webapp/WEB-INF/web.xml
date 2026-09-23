@@ -36,7 +36,7 @@
            production web.xml files. It is why three WARs are built from three
            branches instead of one WAR with a runtime setting. -->
       <param-name>defaultCustomerCode</param-name>
-      <param-value>NORTHLAKE</param-value>
+      <param-value>SUMMIT</param-value>
     </init-param>
   </filter>
   <filter-mapping>

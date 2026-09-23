@@ -55,6 +55,12 @@
     }
 %>
 
+<%-- SUMMIT BRANCH ONLY: transfer advising note. --%>
+<div class="notice">
+  Transfer students: credits from partner institutions are not reflected in the
+  credit totals below until the registrar posts them.
+</div>
+
 <table class="grid">
   <tr>
     <th>SIS ID</th>
