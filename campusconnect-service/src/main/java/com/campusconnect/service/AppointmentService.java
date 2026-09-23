@@ -123,6 +123,13 @@ public class AppointmentService {
             }
         }
 
+        // RIVERTON BRANCH ONLY: early-alert appointments are staff-booked.
+        // Students hitting this path get a hard stop.
+        if ("EARLY_ALERT".equals(reasonCode) && walkIn) {
+            errors.add("Early-alert appointments must be booked by a Success Coach.");
+            return errors;
+        }
+
         int already = appointmentDao.countForAdvisorOnDay(advisorId, startsAt);
         int cap = CustomerProperties.getInt("appointment.maxPerDay", 12);
         if (already >= cap) {

@@ -79,6 +79,13 @@ public class RivertonStudentImporter {
 
                 // Riverton-specific fields.
                 student.setAthleticsCode(record.getAthleticsCode());
+                // RIVERTON BRANCH ONLY: NCAA eligibility term is appended to the
+                // program code because there is nowhere else to put it. This field
+                // exists on no other branch and blocks a straight merge.
+                if (!StringHelper.isEmpty(record.getAthleticsCode())) {
+                    student.setProgramCode(student.getProgramCode() + "/NCAA-"
+                            + CustomerProperties.get("term.current"));
+                }
                 if (!StringHelper.isEmpty(record.getCampusCode())) {
                     Object mapped = campusMap.get(StringHelper.safeUpper(record.getCampusCode()));
                     if (mapped == null) {

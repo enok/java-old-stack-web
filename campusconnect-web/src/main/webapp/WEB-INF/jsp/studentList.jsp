@@ -55,6 +55,12 @@
     }
 %>
 
+<%-- RIVERTON BRANCH ONLY: athletics compliance banner. --%>
+<div class="notice">
+  Athletics compliance: student-athlete records on this page are subject to NCAA
+  reporting. Do not export without approval from the compliance office.
+</div>
+
 <table class="grid">
   <tr>
     <th>SIS ID</th>
