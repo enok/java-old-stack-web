@@ -8,6 +8,11 @@ CREATE DATABASE IF NOT EXISTS campusconnect
 
 USE campusconnect;
 
+-- Student Finance tables first: they hold the foreign keys into student.
+DROP TABLE IF EXISTS financial_hold;
+DROP TABLE IF EXISTS account_payment;
+DROP TABLE IF EXISTS account_charge;
+DROP TABLE IF EXISTS student_account;
 DROP TABLE IF EXISTS enrollment;
 DROP TABLE IF EXISTS early_alert_case;
 DROP TABLE IF EXISTS appointment;
@@ -124,4 +129,85 @@ CREATE TABLE enrollment (
   -- No foreign keys here on purpose: JdbcEnrollmentDao writes rows outside any
   -- transaction and the constraints were dropped in 2016 to stop the nightly
   -- job failing. See docs/LEGACY-SMELLS.md #7.
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- ---------------------------------------------------------------------------
+-- Student Finance / Billing. Added 2016 "for one term". Same database, same
+-- schema, same customer_code column, and hung off the SAME student row by
+-- foreign key - there is no billing-side person record.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE student_account (
+  id              BIGINT        NOT NULL AUTO_INCREMENT,
+  customer_code   VARCHAR(20)   NOT NULL,
+  student_id      BIGINT,
+  term_code       VARCHAR(20),
+  balance         DECIMAL(12,2) DEFAULT 0.00,
+  status          VARCHAR(20),
+  last_charge_at  DATETIME,
+  last_payment_at DATETIME,
+  recomputed_at   DATETIME,
+  created_at      DATETIME,
+  updated_at      DATETIME,
+  PRIMARY KEY (id),
+  -- TODO CC-1412: this should be UNIQUE (customer_code, student_id). It is not,
+  -- and the nightly reconcile has opened a second account at SUMMIT twice.
+  KEY ix_acct_customer (customer_code),
+  KEY ix_acct_student (student_id),
+  CONSTRAINT fk_acct_student FOREIGN KEY (student_id) REFERENCES student (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE account_charge (
+  id            BIGINT        NOT NULL AUTO_INCREMENT,
+  customer_code VARCHAR(20)   NOT NULL,
+  account_id    BIGINT,
+  -- Denormalised copy of student_account.student_id, added to speed up the
+  -- nightly exposure report. Nothing keeps the two columns in step.
+  student_id    BIGINT,
+  charge_type   VARCHAR(20),
+  amount        DECIMAL(12,2),
+  term_code     VARCHAR(20),
+  description   VARCHAR(200),
+  source_ref    VARCHAR(60),
+  posted_at     DATETIME,
+  PRIMARY KEY (id),
+  KEY ix_charge_account (account_id),
+  KEY ix_charge_customer_term (customer_code, term_code),
+  CONSTRAINT fk_charge_account FOREIGN KEY (account_id) REFERENCES student_account (id),
+  CONSTRAINT fk_charge_student FOREIGN KEY (student_id) REFERENCES student (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE account_payment (
+  id             BIGINT        NOT NULL AUTO_INCREMENT,
+  customer_code  VARCHAR(20)   NOT NULL,
+  account_id     BIGINT,
+  amount         DECIMAL(12,2),
+  payment_method VARCHAR(20),
+  reference_no   VARCHAR(60),
+  received_by    VARCHAR(120),
+  posted_at      DATETIME,
+  PRIMARY KEY (id),
+  KEY ix_pay_account (account_id),
+  CONSTRAINT fk_pay_account FOREIGN KEY (account_id) REFERENCES student_account (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE financial_hold (
+  id                   BIGINT        NOT NULL AUTO_INCREMENT,
+  customer_code        VARCHAR(20)   NOT NULL,
+  account_id           BIGINT,
+  student_id           BIGINT,
+  reason_code          VARCHAR(40),
+  threshold_amount     DECIMAL(12,2),
+  balance_at_placement DECIMAL(12,2),
+  placed_by            VARCHAR(120),
+  notes                VARCHAR(4000),
+  placed_at            DATETIME,
+  -- "Active" is released_at IS NULL, spelled out in HQL, in raw SQL and once
+  -- in a JSP. A status column would have been one spelling.
+  released_at          DATETIME,
+  PRIMARY KEY (id),
+  KEY ix_hold_student (student_id),
+  KEY ix_hold_customer_active (customer_code, released_at),
+  CONSTRAINT fk_hold_account FOREIGN KEY (account_id) REFERENCES student_account (id),
+  CONSTRAINT fk_hold_student FOREIGN KEY (student_id) REFERENCES student (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

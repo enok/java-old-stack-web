@@ -8,6 +8,8 @@ import org.apache.log4j.Logger;
 
 import com.campusconnect.common.CustomerContext;
 import com.campusconnect.common.CustomerProperties;
+import com.campusconnect.finance.service.FinancialHoldService;
+import com.campusconnect.finance.service.StudentAccountService;
 import com.campusconnect.service.StudentService;
 
 /**
@@ -16,6 +18,14 @@ import com.campusconnect.service.StudentService;
  * LEGACY SMELL #1, occurrence 5 of 6 (module: campusconnect-service, batch side).
  * LEGACY SMELL #4: Vector, raw types, printStackTrace.
  * LEGACY SMELL #7: no transaction anywhere in this path.
+ *
+ * Since 2016 the same nightly run ALSO does the finance reconcile: it opens a
+ * student_account for every imported student, posts late fees through the raw
+ * JDBC DAO and re-evaluates financial holds. One cron entry, one process, one
+ * thread, two bounded contexts, and no transaction over any of it. Splitting
+ * finance out means splitting this job, and the split has an ordering
+ * constraint nothing in the code records: accounts cannot be reconciled until
+ * the student rows exist.
  */
 public class SisImportJob {
 
@@ -24,10 +34,14 @@ public class SisImportJob {
     private NorthlakeStudentImporter northlakeImporter;
     private RivertonStudentImporter rivertonImporter;
     private StudentService studentService;
+    private StudentAccountService studentAccountService;
+    private FinancialHoldService financialHoldService;
 
     public void setNorthlakeImporter(NorthlakeStudentImporter i) { this.northlakeImporter = i; }
     public void setRivertonImporter(RivertonStudentImporter i) { this.rivertonImporter = i; }
     public void setStudentService(StudentService studentService) { this.studentService = studentService; }
+    public void setStudentAccountService(StudentAccountService s) { this.studentAccountService = s; }
+    public void setFinancialHoldService(FinancialHoldService s) { this.financialHoldService = s; }
 
     public int run(String customerCode, String dropDirectory) {
         CustomerContext.set(customerCode);
@@ -49,6 +63,23 @@ public class SisImportJob {
                 } else {
                     LOG.error("No importer configured for customer " + customerCode);
                 }
+            }
+
+            // ----------------------------------------------------------------
+            // FINANCE, in the same nightly run, on the same thread, reading the
+            // same CustomerContext ThreadLocal the importers set.
+            //
+            // XXX CC-1460: the reconcile is inside the same try block as the
+            // import, so a parse failure in the LAST file skips the finance step
+            // entirely for that customer and no late fees are posted that night.
+            // Nobody notices until the month-end report is short.
+            // ----------------------------------------------------------------
+            if (studentAccountService != null) {
+                int reconciled = studentAccountService.reconcileAfterImport();
+                LOG.info("Nightly finance reconcile touched " + reconciled + " accounts for " + customerCode);
+            }
+            if (financialHoldService != null) {
+                financialHoldService.evaluateAll();
             }
         } catch (Exception e) {
             e.printStackTrace();

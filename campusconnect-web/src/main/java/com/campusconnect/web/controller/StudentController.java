@@ -96,6 +96,13 @@ public class StudentController {
         model.addAttribute("gpaLabel", studentService.formatGpa(student.getGpa()));
         model.addAttribute("statusLabel", studentService.formatStatusLabel(student.getEnrollmentStatus()));
         model.addAttribute("riskBadge", studentService.formatRiskBadge(student));
+
+        // Finance, computed by the ADVISING service (see StudentService), so the
+        // detail screen can show the balance without the controller knowing that
+        // Student Finance exists. The billing screen computes the same number a
+        // different way and the two disagree at Summit.
+        model.addAttribute("balanceLabel", studentService.getAccountBalanceLabel(student));
+        model.addAttribute("holdLabel", studentService.getHoldLabel(student));
         return "studentDetail";
     }
 
