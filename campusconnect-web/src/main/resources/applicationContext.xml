@@ -34,7 +34,11 @@
 
   <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
     <property name="dataSource" ref="dataSource"/>
-    <property name="packagesToScan" value="com.campusconnect.domain"/>
+    <!-- TODO CC-1470: the finance entities were appended to this list in 2016.
+         There is no second SessionFactory and no second DataSource: advising
+         and billing share one Hibernate session and one transaction manager,
+         which is what makes the cross-domain @Transactional methods work. -->
+    <property name="packagesToScan" value="com.campusconnect.domain,com.campusconnect.finance.domain"/>
     <property name="hibernateProperties">
       <props>
         <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5InnoDBDialect</prop>
@@ -71,29 +75,75 @@
     <property name="sessionFactory" ref="sessionFactory"/>
   </bean>
 
-  <!-- Raw JDBC DAO. It takes no DataSource because it opens its own connection. -->
+  <!-- Finance DAOs. Same sessionFactory, same file, no separate context. -->
+  <bean id="studentAccountDao" class="com.campusconnect.finance.persistence.HibernateStudentAccountDao">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+  <bean id="accountChargeDao" class="com.campusconnect.finance.persistence.HibernateAccountChargeDao">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+  <bean id="accountPaymentDao" class="com.campusconnect.finance.persistence.HibernateAccountPaymentDao">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+  <bean id="financialHoldDao" class="com.campusconnect.finance.persistence.HibernateFinancialHoldDao">
+    <property name="sessionFactory" ref="sessionFactory"/>
+  </bean>
+
+  <!-- Raw JDBC DAOs. They take no DataSource because they open their own connection. -->
   <bean id="enrollmentDao" class="com.campusconnect.persistence.jdbc.JdbcEnrollmentDao"/>
+  <bean id="billingExposureDao" class="com.campusconnect.finance.persistence.jdbc.JdbcBillingExposureDao"/>
 
   <!-- Services -->
   <bean id="notificationService" class="com.campusconnect.service.NotificationService">
     <property name="fromAddress" value="noreply@campusconnect.example.edu"/>
   </bean>
 
+  <!--
+    The advising god class also holds the four finance DAOs, because it computes
+    and formats the account balance itself for the student detail screen.
+  -->
   <bean id="studentService" class="com.campusconnect.service.StudentService">
     <property name="studentDao" ref="studentDao"/>
     <property name="advisorDao" ref="advisorDao"/>
     <property name="earlyAlertCaseDao" ref="earlyAlertCaseDao"/>
     <property name="enrollmentDao" ref="enrollmentDao"/>
+    <property name="studentAccountDao" ref="studentAccountDao"/>
+    <property name="accountChargeDao" ref="accountChargeDao"/>
+    <property name="accountPaymentDao" ref="accountPaymentDao"/>
+    <property name="financialHoldDao" ref="financialHoldDao"/>
   </bean>
 
+  <!--
+    CROSS-DOMAIN WIRING. This is the whole seam, and it is four lines of XML:
+    the advising scheduler takes the finance hold service, and the advising
+    early-alert service takes the finance account service. Nothing else in the
+    build records that advising depends on billing.
+  -->
   <bean id="appointmentService" class="com.campusconnect.service.AppointmentService">
     <property name="appointmentDao" ref="appointmentDao"/>
     <property name="studentDao" ref="studentDao"/>
     <property name="advisorDao" ref="advisorDao"/>
+    <property name="financialHoldService" ref="financialHoldService"/>
   </bean>
 
   <bean id="earlyAlertService" class="com.campusconnect.service.EarlyAlertService">
     <property name="earlyAlertCaseDao" ref="earlyAlertCaseDao"/>
+    <property name="studentDao" ref="studentDao"/>
+    <property name="studentAccountService" ref="studentAccountService"/>
+  </bean>
+
+  <!-- Student Finance services. Same file, same transaction manager. -->
+  <bean id="studentAccountService" class="com.campusconnect.finance.service.StudentAccountService">
+    <property name="studentAccountDao" ref="studentAccountDao"/>
+    <property name="accountChargeDao" ref="accountChargeDao"/>
+    <property name="accountPaymentDao" ref="accountPaymentDao"/>
+    <property name="billingExposureDao" ref="billingExposureDao"/>
+    <property name="studentDao" ref="studentDao"/>
+  </bean>
+
+  <bean id="financialHoldService" class="com.campusconnect.finance.service.FinancialHoldService">
+    <property name="financialHoldDao" ref="financialHoldDao"/>
+    <property name="studentAccountDao" ref="studentAccountDao"/>
     <property name="studentDao" ref="studentDao"/>
   </bean>
 
@@ -106,10 +156,13 @@
     <property name="studentDao" ref="studentDao"/>
     <property name="advisorDao" ref="advisorDao"/>
   </bean>
+  <!-- The nightly job spans both domains: importers, then the finance reconcile. -->
   <bean id="sisImportJob" class="com.campusconnect.service.sis.SisImportJob">
     <property name="northlakeImporter" ref="northlakeImporter"/>
     <property name="rivertonImporter" ref="rivertonImporter"/>
     <property name="studentService" ref="studentService"/>
+    <property name="studentAccountService" ref="studentAccountService"/>
+    <property name="financialHoldService" ref="financialHoldService"/>
   </bean>
 
   <!--

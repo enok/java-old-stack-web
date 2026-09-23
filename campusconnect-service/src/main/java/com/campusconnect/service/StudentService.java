@@ -1,5 +1,6 @@
 package com.campusconnect.service;
 
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -20,6 +21,13 @@ import com.campusconnect.domain.Advisor;
 import com.campusconnect.domain.EarlyAlertCase;
 import com.campusconnect.domain.Student;
 import com.campusconnect.domain.sis.SisStudentRecord;
+import com.campusconnect.finance.domain.AccountCharge;
+import com.campusconnect.finance.domain.FinancialHold;
+import com.campusconnect.finance.domain.StudentAccount;
+import com.campusconnect.finance.persistence.AccountChargeDao;
+import com.campusconnect.finance.persistence.AccountPaymentDao;
+import com.campusconnect.finance.persistence.FinancialHoldDao;
+import com.campusconnect.finance.persistence.StudentAccountDao;
 import com.campusconnect.persistence.AdvisorDao;
 import com.campusconnect.persistence.EarlyAlertCaseDao;
 import com.campusconnect.persistence.StudentDao;
@@ -37,6 +45,14 @@ import com.campusconnect.persistence.jdbc.JdbcEnrollmentDao;
  * LEGACY SMELL #4 (raw types, Vector-era idioms, shared SimpleDateFormat,
  * swallowed exceptions), LEGACY SMELL #5 (ServiceLocator lookups) and
  * LEGACY SMELL #7 (a write path with no transaction boundary).
+ *
+ * Since 2016 it also computes and formats the STUDENT FINANCE balance, because
+ * the student detail screen needed it and adding a second service to the
+ * controller "was a bigger change". The balance arithmetic below is a second
+ * copy of StudentAccountService.recomputeBalance() and the money formatting is
+ * a second copy of StudentAccountService.formatMoney(). The two copies have
+ * already drifted: this one does not subtract payments made after the last
+ * recompute and it does not read billing.currencySymbol.
  *
  * The modernization does NOT start by splitting this class. It starts by
  * pinning its current behaviour with characterization tests. See
@@ -56,10 +72,20 @@ public class StudentService {
     private EarlyAlertCaseDao earlyAlertCaseDao;
     private JdbcEnrollmentDao enrollmentDao;
 
+    /** Finance DAOs on the advising god class. Nobody argued about it at the time. */
+    private StudentAccountDao studentAccountDao;
+    private AccountChargeDao accountChargeDao;
+    private AccountPaymentDao accountPaymentDao;
+    private FinancialHoldDao financialHoldDao;
+
     public void setStudentDao(StudentDao studentDao) { this.studentDao = studentDao; }
     public void setAdvisorDao(AdvisorDao advisorDao) { this.advisorDao = advisorDao; }
     public void setEarlyAlertCaseDao(EarlyAlertCaseDao dao) { this.earlyAlertCaseDao = dao; }
     public void setEnrollmentDao(JdbcEnrollmentDao enrollmentDao) { this.enrollmentDao = enrollmentDao; }
+    public void setStudentAccountDao(StudentAccountDao dao) { this.studentAccountDao = dao; }
+    public void setAccountChargeDao(AccountChargeDao dao) { this.accountChargeDao = dao; }
+    public void setAccountPaymentDao(AccountPaymentDao dao) { this.accountPaymentDao = dao; }
+    public void setFinancialHoldDao(FinancialHoldDao dao) { this.financialHoldDao = dao; }
 
     // ------------------------------------------------------------------
     // Read paths
@@ -146,6 +172,97 @@ public class StudentService {
         summary.put("averageGpa", new Double(gpaCount == 0 ? 0.0d : gpaTotal / gpaCount));
         summary.put("asOf", DateUtils.formatDisplay(new Date()));
         return summary;
+    }
+
+    // ------------------------------------------------------------------
+    // Student Finance - a whole bounded context, computed inside the advising
+    // god class because the detail screen asked for it in 2016
+    // ------------------------------------------------------------------
+
+    /**
+     * Recomputes the account balance from the ledger and formats it for display.
+     *
+     * DUPLICATED LOGIC. StudentAccountService.recomputeBalance() does the same
+     * sum and StudentAccountService.formatMoney() does the same formatting.
+     * Neither calls the other. The difference nobody documented: this method
+     * only counts charges posted in the CURRENT term, so on the student detail
+     * screen a student who owes last term's tuition looks settled.
+     *
+     * XXX CC-1441: MONEY IN A DOUBLE, again, and a second time in the same
+     * codebase. The columns are DECIMAL(12,2).
+     */
+    @Transactional(readOnly = true)
+    public String getAccountBalanceLabel(Student student) {
+        if (student == null || student.getId() == null) {
+            return "0.00";
+        }
+        StudentAccount account = studentAccountDao.findByStudentId(student.getId());
+        if (account == null) {
+            return "0.00";
+        }
+
+        String currentTerm = CustomerProperties.get("term.current");
+        double running = 0.0d;
+
+        List charges = accountChargeDao.findByAccountIdAndTerm(account.getId(), currentTerm);
+        Iterator ci = charges.iterator();
+        while (ci.hasNext()) {
+            AccountCharge charge = (AccountCharge) ci.next();
+            if (charge.getAmount() != null) {
+                running = running + charge.getAmount().doubleValue();
+            }
+        }
+
+        List payments = accountPaymentDao.findByAccountId(account.getId());
+        Iterator pi = payments.iterator();
+        while (pi.hasNext()) {
+            Object payment = pi.next();
+            BigDecimal amount = ((com.campusconnect.finance.domain.AccountPayment) payment).getAmount();
+            if (amount != null) {
+                running = running - amount.doubleValue();
+            }
+        }
+
+        return formatMoney(new BigDecimal(String.valueOf(running)));
+    }
+
+    /**
+     * Second copy of StudentAccountService.formatMoney(). This one hardcodes the
+     * dollar sign instead of reading billing.currencySymbol, which is why the
+     * statement screen and the detail screen render the same number differently
+     * at Summit.
+     */
+    public String formatMoney(BigDecimal amount) {
+        if (amount == null) {
+            return "0.00";
+        }
+        String raw = amount.toString();
+        int dot = raw.indexOf('.');
+        if (dot < 0) {
+            return raw + ".00";
+        }
+        while (raw.length() < dot + 3) {
+            raw = raw + "0";
+        }
+        return raw.substring(0, dot + 3);
+    }
+
+    /** Hold state for the advising detail screen. A finance read on an advising path. */
+    @Transactional(readOnly = true)
+    public String getHoldLabel(Student student) {
+        if (student == null || student.getId() == null) {
+            return "";
+        }
+        FinancialHold hold = financialHoldDao.findActiveForStudent(student.getId());
+        if (hold == null) {
+            return "";
+        }
+        // Summit's registrar objected to the word "hold" the same year they
+        // objected to "probation". See formatStatusLabel().
+        if ("SUMMIT".equals(CustomerContext.get())) {
+            return "Bursar Review";
+        }
+        return "FINANCIAL HOLD (" + hold.getReasonCode() + ")";
     }
 
     // ------------------------------------------------------------------

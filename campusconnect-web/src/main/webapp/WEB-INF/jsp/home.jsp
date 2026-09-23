@@ -15,6 +15,7 @@
   <li><a href="<%= request.getContextPath() %>/students/list">Students</a></li>
   <li><a href="<%= request.getContextPath() %>/alerts/open">Early alerts</a></li>
   <li><a href="<%= request.getContextPath() %>/appointments/day?advisorId=1"><c:out value="${advisorLabel}"/> schedule</a></li>
+  <li><a href="<%= request.getContextPath() %>/billing/holds">Financial holds</a></li>
 </ul>
 
 <p>Support: <a href="mailto:<c:out value='${supportEmail}'/>"><c:out value="${supportEmail}"/></a></p>

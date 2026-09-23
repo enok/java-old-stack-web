@@ -56,4 +56,71 @@ INSERT INTO early_alert_case (customer_code, student_id, advisor_id, reason, sev
  ('NORTHLAKE',3,1,'Attendance below 70%','MEDIUM','IN_PROGRESS','dwhitfield','2014-09-29 02:10:00',NULL,NULL),
  ('RIVERTON',4,3,'GPA below 2.25 threshold','HIGH','ESCALATED','system','2014-09-20 02:10:00',NULL,NULL),
  ('RIVERTON',6,4,'GPA below 2.25 threshold','HIGH','OPEN','system','2014-10-01 02:10:00',NULL,NULL),
- ('SUMMIT',8,5,'Failing NUR-110','HIGH','OPEN','system','2014-10-02 02:10:00',NULL,NULL);
+ ('SUMMIT',8,5,'Failing NUR-110','HIGH','OPEN','system','2014-10-02 02:10:00',NULL,NULL),
+ -- Closing this one posts a late-registration fee to the student's finance
+ -- account in the same transaction. See EarlyAlertService.closeCase().
+ ('NORTHLAKE',1,1,'Late registration, no term schedule on file','MEDIUM','OPEN','dwhitfield','2014-10-05 02:10:00',NULL,NULL);
+
+-- ---------------------------------------------------------------------------
+-- Student Finance / Billing seed. One account per student, hung off the SAME
+-- student ids the advising rows above use. The balances are the ledger totals:
+-- sum(account_charge.amount) - sum(account_payment.amount).
+-- ---------------------------------------------------------------------------
+
+INSERT INTO student_account (customer_code, student_id, term_code, balance, status,
+                             last_charge_at, last_payment_at, recomputed_at, created_at, updated_at) VALUES
+ ('NORTHLAKE',1,'FA2014',   0.00,'OPEN',    '2014-08-25 06:00:00','2014-09-04 11:12:00',NOW(),NOW(),NOW()),
+ ('NORTHLAKE',2,'FA2014',1240.00,'PAST_DUE','2014-10-01 02:10:00','2014-09-08 09:40:00',NOW(),NOW(),NOW()),
+ ('NORTHLAKE',3,'FA2014', 310.00,'PAST_DUE','2014-08-25 06:00:00','2014-09-19 14:05:00',NOW(),NOW(),NOW()),
+ ('RIVERTON', 4,'FA2014',1672.00,'PAST_DUE','2014-09-30 02:10:00',NULL,                 NOW(),NOW(),NOW()),
+ ('RIVERTON', 5,'FA2014',   0.00,'OPEN',    '2014-08-20 06:00:00','2014-08-29 10:00:00',NOW(),NOW(),NOW()),
+ ('RIVERTON', 6,'FA2014',2090.00,'PAST_DUE','2014-09-30 02:10:00',NULL,                 NOW(),NOW(),NOW()),
+ ('SUMMIT',   7,'FA2014', 142.00,'PAST_DUE','2014-08-28 06:00:00','2014-09-11 13:30:00',NOW(),NOW(),NOW()),
+ ('SUMMIT',   8,'FA2014', 568.00,'PAST_DUE','2014-10-02 02:10:00','2014-09-15 08:55:00',NOW(),NOW(),NOW()),
+ ('SUMMIT',   9,'FA2014',   0.00,'OPEN',    '2014-08-28 06:00:00','2014-09-02 16:20:00',NOW(),NOW(),NOW());
+
+INSERT INTO account_charge (customer_code, account_id, student_id, charge_type, amount, term_code,
+                            description, source_ref, posted_at) VALUES
+ ('NORTHLAKE',1,1,'TUITION', 930.00,'FA2014','Tuition, 3 credits at 310.00','SIS-FA2014','2014-08-25 06:00:00'),
+ ('NORTHLAKE',1,1,'FEE',      65.00,'FA2014','Student activity fee','SIS-FA2014','2014-08-25 06:00:00'),
+ ('NORTHLAKE',2,2,'TUITION',1240.00,'FA2014','Tuition, 4 credits at 310.00','SIS-FA2014','2014-08-25 06:00:00'),
+ ('NORTHLAKE',2,2,'FEE',      65.00,'FA2014','Student activity fee','SIS-FA2014','2014-08-25 06:00:00'),
+ ('NORTHLAKE',2,2,'LATE_FEE', 25.00,'FA2014','Late payment fee, nightly reconcile','NIGHTLY','2014-10-01 02:10:00'),
+ ('NORTHLAKE',3,3,'TUITION', 930.00,'FA2014','Tuition, 3 credits at 310.00','SIS-FA2014','2014-08-25 06:00:00'),
+ ('NORTHLAKE',3,3,'FEE',      65.00,'FA2014','Student activity fee','SIS-FA2014','2014-08-25 06:00:00'),
+ ('RIVERTON', 4,4,'TUITION',1254.00,'FA2014','Tuition, 3 credits at 418.00','SIS-FA2014','2014-08-20 06:00:00'),
+ ('RIVERTON', 4,4,'FEE',     118.00,'FA2014','Health and recreation fee','SIS-FA2014','2014-08-20 06:00:00'),
+ ('RIVERTON', 4,4,'LATE_FEE',300.00,'FA2014','Late payment fee, 1.5 percent of balance','NIGHTLY','2014-09-30 02:10:00'),
+ ('RIVERTON', 5,5,'TUITION',1672.00,'FA2014','Tuition, 4 credits at 418.00','SIS-FA2014','2014-08-20 06:00:00'),
+ ('RIVERTON', 5,5,'FEE',     118.00,'FA2014','Health and recreation fee','SIS-FA2014','2014-08-20 06:00:00'),
+ ('RIVERTON', 6,6,'TUITION',1254.00,'FA2014','Tuition, 3 credits at 418.00','SIS-FA2014','2014-08-20 06:00:00'),
+ ('RIVERTON', 6,6,'FEE',     118.00,'FA2014','Health and recreation fee','SIS-FA2014','2014-08-20 06:00:00'),
+ ('RIVERTON', 6,6,'LATE_FEE',718.00,'FA2014','Late payment fee, 1.5 percent of balance','NIGHTLY','2014-09-30 02:10:00'),
+ ('SUMMIT',   7,7,'TUITION', 426.00,'FA2014','Tuition, 3 credits at 142.00','SIS-FA2014','2014-08-28 06:00:00'),
+ ('SUMMIT',   7,7,'FEE',      40.00,'FA2014','Technology fee','SIS-FA2014','2014-08-28 06:00:00'),
+ ('SUMMIT',   8,8,'TUITION', 568.00,'FA2014','Tuition, 4 credits at 142.00','SIS-FA2014','2014-08-28 06:00:00'),
+ ('SUMMIT',   8,8,'FEE',      40.00,'FA2014','Technology fee','SIS-FA2014','2014-08-28 06:00:00'),
+ ('SUMMIT',   8,8,'LATE_FEE', 10.00,'FA2014','Late payment fee, capped at Summit','NIGHTLY','2014-10-02 02:10:00'),
+ ('SUMMIT',   9,9,'TUITION', 426.00,'FA2014','Tuition, 3 credits at 142.00','SIS-FA2014','2014-08-28 06:00:00'),
+ ('SUMMIT',   9,9,'FEE',      40.00,'FA2014','Technology fee','SIS-FA2014','2014-08-28 06:00:00');
+
+INSERT INTO account_payment (customer_code, account_id, amount, payment_method, reference_no,
+                             received_by, posted_at) VALUES
+ ('NORTHLAKE',1, 995.00,'CHECK','NL-CHK-10041','bursar','2014-09-04 11:12:00'),
+ ('NORTHLAKE',2,  90.00,'CASH', 'NL-CSH-10088','bursar','2014-09-08 09:40:00'),
+ ('NORTHLAKE',3, 685.00,'AID',  'NL-AID-22107','system','2014-09-19 14:05:00'),
+ ('RIVERTON', 5,1790.00,'AID',  'RVT-AID-88120','system','2014-08-29 10:00:00'),
+ ('SUMMIT',   7, 324.00,'CARD', 'SUM-CRD-4417','counter','2014-09-11 13:30:00'),
+ ('SUMMIT',   8,  50.00,'CASH', 'SUM-CSH-4420','counter','2014-09-15 08:55:00'),
+ ('SUMMIT',   9, 466.00,'CHECK','SUM-CHK-4431','counter','2014-09-02 16:20:00');
+
+-- Holds. Note student 4 (Devon Marsh) is a Riverton athlete: the hold row
+-- exists, but billing.athleteHoldExempt=true means it does NOT block his
+-- advising appointments. Student 3's hold was released by hand in September.
+INSERT INTO financial_hold (customer_code, account_id, student_id, reason_code, threshold_amount,
+                            balance_at_placement, placed_by, notes, placed_at, released_at) VALUES
+ ('NORTHLAKE',2,2,'BALANCE_OVER_THRESHOLD', 500.00,1240.00,'system',NULL,'2014-10-01 02:11:00',NULL),
+ ('NORTHLAKE',3,3,'BALANCE_OVER_THRESHOLD', 500.00, 995.00,'system','Aid disbursed, released','2014-09-01 02:11:00','2014-09-19 14:06:00'),
+ ('RIVERTON', 4,4,'BALANCE_OVER_THRESHOLD',1000.00,1672.00,'system',NULL,'2014-09-30 02:11:00',NULL),
+ ('RIVERTON', 6,6,'BALANCE_OVER_THRESHOLD',1000.00,2090.00,'system',NULL,'2014-09-30 02:11:00',NULL),
+ ('SUMMIT',   8,8,'BALANCE_OVER_THRESHOLD', 250.00, 568.00,'system',NULL,'2014-10-02 02:11:00',NULL);
