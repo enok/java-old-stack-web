@@ -13,6 +13,7 @@ import com.campusconnect.common.DateUtils;
 import com.campusconnect.domain.Advisor;
 import com.campusconnect.domain.Appointment;
 import com.campusconnect.domain.Student;
+import com.campusconnect.finance.service.FinancialHoldService;
 import com.campusconnect.persistence.AdvisorDao;
 import com.campusconnect.persistence.AppointmentDao;
 import com.campusconnect.persistence.StudentDao;
@@ -26,6 +27,12 @@ import com.campusconnect.persistence.StudentDao;
  * the property files, and again in the JSP that renders the form.
  *
  * This is the class the modernization turns into a SchedulingPolicy Strategy.
+ *
+ * It is ALSO the class that makes advising depend on Student Finance. Since
+ * 2016 schedule() asks FinancialHoldService whether the student's balance
+ * blocks the booking. There is no interface between them, no event and no
+ * anti-corruption layer: this jar imports com.campusconnect.finance.service
+ * directly and calls it inside the advising transaction.
  */
 public class AppointmentService {
 
@@ -35,9 +42,17 @@ public class AppointmentService {
     private StudentDao studentDao;
     private AdvisorDao advisorDao;
 
+    /**
+     * CROSS-DOMAIN DEPENDENCY. An advising service holding a finance service.
+     * Wired by setter in applicationContext.xml like everything else, so the
+     * coupling is invisible unless you read the XML.
+     */
+    private FinancialHoldService financialHoldService;
+
     public void setAppointmentDao(AppointmentDao appointmentDao) { this.appointmentDao = appointmentDao; }
     public void setStudentDao(StudentDao studentDao) { this.studentDao = studentDao; }
     public void setAdvisorDao(AdvisorDao advisorDao) { this.advisorDao = advisorDao; }
+    public void setFinancialHoldService(FinancialHoldService s) { this.financialHoldService = s; }
 
     public int slotMinutes() {
         String customerCode = CustomerContext.get();
@@ -106,6 +121,27 @@ public class AppointmentService {
 
         if (walkIn && !walkInsAllowed()) {
             errors.add("Walk-in appointments are not permitted at this institution.");
+            return errors;
+        }
+
+        // ------------------------------------------------------------------
+        // FINANCE CHECK INSIDE THE ADVISING RULES.
+        //
+        // A balance over the customer's threshold blocks the booking. The call
+        // is direct and synchronous, it runs inside this @Transactional method
+        // on the same Hibernate session, and the message it returns is rendered
+        // by the advising JSP. Deleting finance from this build would not
+        // compile; running finance as a separate service would need this to
+        // become a remote call on the booking path.
+        //
+        // XXX CC-1451: the bursar's office asked for an override for hardship
+        // cases in 2017. It was never built, so advisors telephone the bursar,
+        // who releases the hold, who then re-places it the next night when
+        // FinancialHoldService.evaluateAll() runs.
+        // ------------------------------------------------------------------
+        if (financialHoldService != null && financialHoldService.blocksAppointment(studentId, reasonCode)) {
+            errors.add(financialHoldService.blockMessage(studentId));
+            LOG.warn("Appointment blocked by financial hold for student " + studentId);
             return errors;
         }
 

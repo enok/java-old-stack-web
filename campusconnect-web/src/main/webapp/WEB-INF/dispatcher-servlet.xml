@@ -20,7 +20,7 @@
     changing an @Autowired field in StudentController sometimes has no effect.
     TODO CC-1360: pick one style.
   -->
-  <context:component-scan base-package="com.campusconnect.web.controller"/>
+  <context:component-scan base-package="com.campusconnect.web.controller,com.campusconnect.finance.web.controller"/>
   <mvc:annotation-driven/>
 
   <bean id="studentController" class="com.campusconnect.web.controller.StudentController">
@@ -30,6 +30,14 @@
 
   <bean id="appointmentController" class="com.campusconnect.web.controller.AppointmentController">
     <property name="appointmentService" ref="appointmentService"/>
+  </bean>
+
+  <!-- Third controller declared twice, same as the two above. It takes the
+       advising StudentService as well as the two finance services. -->
+  <bean id="billingController" class="com.campusconnect.finance.web.controller.BillingController">
+    <property name="studentAccountService" ref="studentAccountService"/>
+    <property name="financialHoldService" ref="financialHoldService"/>
+    <property name="studentService" ref="studentService"/>
   </bean>
 
   <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
